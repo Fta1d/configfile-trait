@@ -15,25 +15,35 @@ pub trait ConfigFile {
 
 impl ConfigFile for Logger {
     fn load_cfg(&mut self, path: &str) -> Result<(), Box<dyn Error>> {
-        let file= File::open("cfg.txt")?;
+        let file= File::open("cfg.txt").map_err(|e| {
+            eprintln!("Error during opening file: {}", e);
+            e
+        })?;
+
         let reader = BufReader::new(file);
 
         for line in reader.lines() {
-            let line = line?;
-            let trimmed = line.trim();
+            if let Ok(line) = line {
+                let trimmed = line.trim();
 
-            if trimmed.is_empty() {
+                if trimmed.is_empty() {
+                    continue;
+                }
+
+                if let Some((key, value)) = trimmed.split_once(':') {
+                    match key.trim() {
+                        "ver" => self.ver = value.trim().to_string(),
+                        "thread" => self.thread = value.trim().to_string(),
+                        "os" => self.os = value.trim().to_string(),
+                        _ => {} 
+                    }
+                }
+
+            } else {
+                eprintln!("Error during reading line, skipping...");
                 continue;
             }
-
-            if let Some((key, value)) = trimmed.split_once(':') {
-                match key.trim() {
-                    "ver" => self.ver = value.trim().to_string(),
-                    "thread" => self.thread = value.trim().to_string(),
-                    "os" => self.os = value.trim().to_string(),
-                    _ => {} 
-                }
-            }
+            
         }
         Ok(())
     }
